@@ -18,7 +18,7 @@ typedef struct ComputeBuffer
   unsigned int size;
 } ComputeBuffer;
 
-ComputeShader load_compute_shader(const char *source)
+ComputeShader LoadComputeShader(const char *source)
 {
   ComputeShader shader = { 0 };
 
@@ -56,17 +56,17 @@ ComputeShader load_compute_shader(const char *source)
   return shader;
 }
 
-bool is_compute_shader_valid(ComputeShader shader)
+bool IsComputeShaderValid(ComputeShader shader)
 {
   return shader.id > 0;
 }
 
-bool is_compute_buffer_valid(ComputeBuffer buffer)
+bool IsComputeBufferValid(ComputeBuffer buffer)
 {
   return buffer.bufferId > 0;
 }
 
-ComputeBuffer create_compute_buffer(void *data, int count)
+ComputeBuffer ComputeBufferCreate(void *data, int count)
 {
   ComputeBuffer buffer = { 0 };
   glGenBuffers(1, &buffer.bufferId);
@@ -82,9 +82,9 @@ ComputeBuffer create_compute_buffer(void *data, int count)
   return buffer;
 }
 
-void dispatch_compute(ComputeShader shader, ComputeBuffer buffer, int groups = 4)
+void ComputeDispatch(ComputeShader shader, ComputeBuffer buffer, int groups = 4)
 {
-  if (!is_compute_shader_valid(shader))
+  if (!IsComputeShaderValid(shader))
     return;
 
   glUseProgram(shader.id);
@@ -97,7 +97,7 @@ void dispatch_compute(ComputeShader shader, ComputeBuffer buffer, int groups = 4
   glUseProgram(0);
 }
 
-bool is_compute_done(ComputeShader shader)
+bool IsComputeDone(ComputeShader shader)
 {
   if (!shader.compute_fence)
     return true;
@@ -105,15 +105,15 @@ bool is_compute_done(ComputeShader shader)
   return (status == GL_ALREADY_SIGNALED || status == GL_CONDITION_SATISFIED);
 }
 
-void compute_buffer_wait(ComputeBuffer buffer)
+void ComputeBufferWait(ComputeBuffer buffer)
 {
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer.bufferId);
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
-void unload_compute_shader(ComputeShader shader)
+void UnloadComputeShader(ComputeShader shader)
 {
-  if (!is_compute_shader_valid(shader))
+  if (!IsComputeShaderValid(shader))
     return;
 
   glDeleteProgram(shader.id);
@@ -121,15 +121,15 @@ void unload_compute_shader(ComputeShader shader)
     glDeleteSync((GLsync)shader.compute_fence);
 }
 
-void unload_compute_buffer(ComputeBuffer buffer)
+void UnloadComputeBuffer(ComputeBuffer buffer)
 {
   glDeleteBuffers(1, &buffer.bufferId);
   glDeleteBuffers(1, &buffer.pbo);
 }
 
-void set_compute_shader_uniform_float(ComputeShader shader, const char *name, float value)
+void SetComputeShaderValue(ComputeShader shader, const char *name, float value)
 {
-  if (!is_compute_shader_valid(shader))
+  if (!IsComputeShaderValid(shader))
     return;
 
   glUseProgram(shader.id);
@@ -137,7 +137,7 @@ void set_compute_shader_uniform_float(ComputeShader shader, const char *name, fl
   glUniform1f(loc, value);
 }
 
-void copy_compute_buffer_to_texture(ComputeBuffer buffer, unsigned int texture_id, int width, int height)
+void CopyComputeBufferToTexture(ComputeBuffer buffer, unsigned int texture_id, int width, int height)
 {
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer.bufferId);
   glBindBuffer(GL_PIXEL_UNPACK_BUFFER, buffer.pbo);
@@ -185,18 +185,18 @@ int main()
     return -1;
   }
 
-  ComputeShader shader = load_compute_shader(cs_source);
-  assert(is_compute_shader_valid(shader));
+  ComputeShader shader = LoadComputeShader(cs_source);
+  assert(IsComputeShaderValid(shader));
 
   Image image          = GenImageColor(W, H, BLANK);
-  ComputeBuffer buffer = create_compute_buffer(image.data, pixel_count * 4);
+  ComputeBuffer buffer = ComputeBufferCreate(image.data, pixel_count * 4);
   ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R32G32B32A32);
   Texture2D texture = LoadTextureFromImage(image);
   UnloadImage(image);
 
   float time = 0.0f;
-  set_compute_shader_uniform_float(shader, "time", time);
-  dispatch_compute(shader, buffer, pixel_count / 256);
+  SetComputeShaderValue(shader, "time", time);
+  ComputeDispatch(shader, buffer, pixel_count / 256);
 
   uint64_t frame = 0;
   while (!WindowShouldClose())
@@ -204,14 +204,14 @@ int main()
     time += GetFrameTime();
 
     auto start = std::chrono::high_resolution_clock::now();
-    if (is_compute_done(shader))
+    if (IsComputeDone(shader))
     {
       std::cout << " Done!" << std::endl;
 
-      copy_compute_buffer_to_texture(buffer, texture.id, W, H);
+      CopyComputeBufferToTexture(buffer, texture.id, W, H);
 
-      set_compute_shader_uniform_float(shader, "time", time);
-      dispatch_compute(shader, buffer, pixel_count / 256);
+      SetComputeShaderValue(shader, "time", time);
+      ComputeDispatch(shader, buffer, pixel_count / 256);
     }
     else
     {
@@ -241,8 +241,8 @@ int main()
   }
 
   UnloadTexture(texture);
-  unload_compute_buffer(buffer);
-  unload_compute_shader(shader);
+  UnloadComputeBuffer(buffer);
+  UnloadComputeShader(shader);
   CloseWindow();
 
   return 0;
