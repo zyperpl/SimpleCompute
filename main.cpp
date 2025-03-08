@@ -1,4 +1,3 @@
-#define SC_USE_LOG
 #include "compute.h"
 
 #include <chrono>
@@ -40,7 +39,11 @@ int main()
   }
 
   ComputeShader shader = load_compute_shader(cs_source);
-  assert(is_compute_shader_valid(shader));
+  if (!is_compute_shader_valid(shader))
+  {
+    CloseWindow();
+    return -1;
+  }
 
   Image image          = GenImageColor(W, H, BLANK);
   ComputeBuffer buffer = create_compute_buffer(image.data, pixel_count * 4);
