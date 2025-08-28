@@ -1,4 +1,4 @@
-#include "compute.h"
+#include "../compute.h"
 
 #include <chrono>
 #include <raylib.h>
